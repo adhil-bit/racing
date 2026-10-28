@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Apex Rush — night city racing</title>
+  <meta name="description" content="Three laps through a neon city. Race cars and superbikes against five rivals, right in your browser." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=Saira+Condensed:wght@600;800&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div id="app"></div>
+  <p id="boot-error" class="boot-error" hidden></p>
+
+  <section id="menu" class="menu" aria-label="Garage">
+    <div class="menu-panel">
+      <h1 class="logo">Apex Rush</h1>
+      <p class="tagline">Three laps through the night city. Pick a machine.</p>
+      <div class="menu-scroll">
+      <div id="vehicle-list" class="vlist"></div>
+      <div id="vehicle-detail" class="vdetail"></div>
+      <dl class="keys">
+        <div><dt>W A S D / arrows</dt><dd>Drive</dd></div>
+        <div><dt>Shift</dt><dd>Nitro</dd></div>
+        <div><dt>Space</dt><dd>Handbrake drift</dd></div>
+        <div><dt>C</dt><dd>Camera</dd></div>
+        <div><dt>R</dt><dd>Recover</dd></div>
+        <div><dt>Esc</dt><dd>Pause</dd></div>
+      </dl>
+      </div>
+      <button id="start-btn" class="btn btn-primary" type="button">Start race</button>
+    </div>
+  </section>
+
+  <section id="hud" class="hud" hidden aria-live="off">
+    <div class="hud-race">
+      <div class="hud-pos"><span id="hud-pos">1</span><small id="hud-pos-of">/6</small></div>
+      <div class="hud-lap" id="hud-lap">Lap 1 of 3</div>
+      <dl class="hud-times">
+        <div><dt>Lap</dt><dd id="hud-laptime">–</dd></div>
+        <div><dt>Best</dt><dd id="hud-best">–</dd></div>
+        <div><dt>Race</dt><dd id="hud-total">–</dd></div>
+      </dl>
+    </div>
+    <div class="hud-map"><canvas id="minimap" aria-label="Track map"></canvas>
+      <div class="hud-tools">
+        <button id="cam-btn" class="chip" type="button">Camera</button>
+        <button id="mute-btn" class="chip" type="button">Sound on</button>
+        <button id="pause-btn" class="chip" type="button">Pause</button>
+      </div>
+    </div>
+    <div class="speedo">
+      <div class="speed-row"><span id="hud-speed" class="speed">0</span><span class="unit">km/h</span><span id="hud-gear" class="gear">1</span></div>
+      <div class="bar rpm"><i id="hud-rpm"></i></div>
+      <div class="bar nitro"><i id="hud-nitro"></i><span>Nitro</span></div>
+    </div>
+    <div id="countdown" class="countdown"></div>
+    <div id="banner" class="banner"></div>
+    <div id="touch" class="touch">
+      <div class="touch-left">
+        <button type="button" data-control="left" aria-label="Steer left">◀</button>
+        <button type="button" data-control="right" aria-label="Steer right">▶</button>
+      </div>
+      <div class="touch-right">
+        <button type="button" data-control="nitro" class="t-nitro">Nitro</button>
+        <button type="button" data-control="hand">Drift</button>
+        <button type="button" data-control="down">Brake</button>
+        <button type="button" data-control="up" class="t-gas">Gas</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="pause" class="overlay" hidden aria-label="Paused">
+    <div class="sheet">
+      <h2>Paused</h2>
+      <button id="resume-btn" class="btn btn-primary" type="button">Resume</button>
+      <button id="restart-btn" class="btn" type="button">Restart race</button>
+      <button id="quit-btn" class="btn" type="button">Back to garage</button>
+    </div>
+  </section>
+
+  <section id="results" class="overlay" hidden aria-label="Results">
+    <div class="sheet sheet-wide">
+      <h2 id="results-title">You finished</h2>
+      <p id="results-sub" class="sub"></p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Pos</th><th>Driver</th><th>Machine</th><th>Time</th></tr></thead>
+          <tbody id="results-body"></tbody>
+        </table>
+      </div>
+      <div class="row">
+        <button id="again-btn" class="btn btn-primary" type="button">Race again</button>
+        <button id="garage-btn" class="btn" type="button">Change machine</button>
+      </div>
+    </div>
+  </section>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

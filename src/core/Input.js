@@ -1,0 +1,81 @@
+// Unified controls from keyboard, gamepad and on-screen touch buttons.
+// Systems read one normalised object: { throttle, brake, steer, handbrake, nitro }.
+
+const KEYMAP = {
+  ArrowUp: 'up', KeyW: 'up',
+  ArrowDown: 'down', KeyS: 'down',
+  ArrowLeft: 'left', KeyA: 'left',
+  ArrowRight: 'right', KeyD: 'right',
+  Space: 'hand',
+  ShiftLeft: 'nitro', ShiftRight: 'nitro', KeyN: 'nitro',
+};
+
+export class Input {
+  constructor() {
+    this.keys = new Set();
+    this.touch = new Set();
+    this.listeners = {};
+    this.state = { throttle: 0, brake: 0, steer: 0, handbrake: false, nitro: false };
+    this.prevPadButtons = [];
+
+    window.addEventListener('keydown', (e) => {
+      const k = KEYMAP[e.code];
+      if (k) { this.keys.add(k); e.preventDefault(); }
+      if (!e.repeat) this.emit(e.code);
+    });
+    window.addEventListener('keyup', (e) => {
+      const k = KEYMAP[e.code];
+      if (k) this.keys.delete(k);
+    });
+    window.addEventListener('blur', () => { this.keys.clear(); this.touch.clear(); });
+
+    document.querySelectorAll('[data-control]').forEach((el) => {
+      const c = el.dataset.control;
+      const on = (e) => { e.preventDefault(); this.touch.add(c); el.classList.add('is-down'); };
+      const off = (e) => { e.preventDefault(); this.touch.delete(c); el.classList.remove('is-down'); };
+      el.addEventListener('pointerdown', on);
+      el.addEventListener('pointerup', off);
+      el.addEventListener('pointercancel', off);
+      el.addEventListener('pointerleave', off);
+    });
+  }
+
+  on(code, fn) {
+    (this.listeners[code] ||= []).push(fn);
+  }
+
+  emit(code) {
+    (this.listeners[code] || []).forEach((fn) => fn());
+  }
+
+  poll() {
+    const has = (k) => this.keys.has(k) || this.touch.has(k);
+    let throttle = has('up') ? 1 : 0;
+    let brake = has('down') ? 1 : 0;
+    let steer = (has('right') ? 1 : 0) - (has('left') ? 1 : 0);
+    let handbrake = has('hand');
+    let nitro = has('nitro');
+
+    const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    const pad = pads && Array.from(pads).find(Boolean);
+    if (pad) {
+      const ax = pad.axes[0] || 0;
+      if (Math.abs(ax) > 0.12) steer = ax;
+      const rt = pad.buttons[7]?.value || 0;
+      const lt = pad.buttons[6]?.value || 0;
+      throttle = Math.max(throttle, rt);
+      brake = Math.max(brake, lt);
+      handbrake ||= !!pad.buttons[2]?.pressed;
+      nitro ||= !!pad.buttons[0]?.pressed;
+      // start button -> pause, Y -> camera, B -> reset
+      const map = { 9: 'Escape', 3: 'KeyC', 1: 'KeyR' };
+      for (const [i, code] of Object.entries(map)) {
+        const p = !!pad.buttons[i]?.pressed;
+        if (p && !this.prevPadButtons[i]) this.emit(code);
+        this.prevPadButtons[i] = p;
+      }
+    }
+    Object.assign(this.state, { throttle, brake, steer, handbrake, nitro });
+    return this.state;
+  }
+}
