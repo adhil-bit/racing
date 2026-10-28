@@ -38,6 +38,10 @@ export class Minimap {
     g.fillRect(sx - 5, sy - 1.5, 10, 3);
   }
 
+  // Several minimaps (one per mode) share the HUD canvas; nothing to rebind
+  // beyond redrawing, which draw() does every frame.
+  rebind() {}
+
   map(p) {
     // top-down view: screen right = +X, screen down = +Z (not mirrored)
     return [p.x * this.scale + this.ox, p.z * this.scale + this.oz];

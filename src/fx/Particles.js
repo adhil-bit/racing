@@ -47,6 +47,7 @@ export class Particles {
     const soft = radialTexture('rgba(255,255,255,0.9)', 'rgba(255,255,255,0)');
     this.smoke = new Pool(scene, 120, { color: 0xb8c0d8, additive: false, tex: soft });
     this.sparks = new Pool(scene, 80, { color: 0xffb84d, additive: true, tex: soft });
+    this.foam = new Pool(scene, 320, { color: 0xe8f4ff, additive: false, tex: soft });
     this.tmp = new THREE.Vector3();
     this.tmpV = new THREE.Vector3();
   }
@@ -72,8 +73,46 @@ export class Particles {
     }
   }
 
+  // Boat wake: foam left at the stern, spreading outward.
+  wake(pos, heading, speed, length, beam) {
+    const c = Math.cos(heading);
+    const s = Math.sin(heading);
+    const back = -length;
+    const sides = beam > 0.8 ? [-beam, beam] : [0];
+    const k = Math.min(1, speed / 30);
+    for (const x of sides) {
+      if (Math.random() > 0.2 + k * 0.4) continue;
+      this.tmp.set(pos.x + s * back - c * x, 0.15, pos.z + c * back + s * x);
+      const out = Math.sign(x || Math.random() - 0.5) * (1 + k * 2);
+      this.tmpV.set(-c * out, 0.2, s * out);
+      this.foam.spawn(this.tmp, this.tmpV, { life: 1.1 + k * 0.7, size: 0.45 + k * 0.35, grow: 1.6 + k * 2.4, alpha: 0.32 });
+    }
+  }
+
+  // Spray thrown up by hard turns and buoy hits.
+  splash(pos, n, power = 1) {
+    for (let i = 0; i < n; i++) {
+      this.tmpV.set((Math.random() - 0.5) * 6 * power, (3 + Math.random() * 5) * power, (Math.random() - 0.5) * 6 * power);
+      this.tmp.copy(pos).setY(0.4);
+      this.foam.spawn(this.tmp, this.tmpV, { life: 0.6 + Math.random() * 0.4, size: 0.5, grow: 1.6, gravity: 12, alpha: 0.75 });
+    }
+  }
+
+  // Wingtip vapour in hard banked turns.
+  contrail(pos, heading, span, bank) {
+    const c = Math.cos(heading);
+    const s = Math.sin(heading);
+    this.tmpV.set(0, 0, 0);
+    for (const x of [-span, span]) {
+      const y = pos.y + Math.sin(bank) * -x * 0.9;
+      this.tmp.set(pos.x - c * x * Math.cos(bank) - s * 0.8, y, pos.z + s * x * Math.cos(bank) - c * 0.8);
+      this.foam.spawn(this.tmp, this.tmpV, { life: 0.9, size: 0.45, grow: 1.4, alpha: 0.55 });
+    }
+  }
+
   update(dt) {
     this.smoke.update(dt);
     this.sparks.update(dt);
+    this.foam.update(dt);
   }
 }

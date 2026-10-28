@@ -1,10 +1,17 @@
-# Apex Rush
+# SkyDrive X
 
-Night-city arcade racer for the browser. Pick a car or a superbike and race five
-rivals over three laps of a 3.6 km street circuit. Built with Three.js and Vite,
-no image or sound assets: every texture is drawn on a canvas at boot and every
-sound is synthesised with Web Audio, so the whole game ships as one ~140 kB
-(gzipped) bundle.
+Arcade racing in the browser across three separate worlds, each with its own
+course, machines and handling:
+
+| Mode | World | Machines |
+| --- | --- | --- |
+| **Road** | 3.6 km night-city street circuit | Vortex GT, Atlas V8 (cars) · Raptor 1000, Shade 750 (bikes) |
+| **Water** | 3.7 km harbour canal course with bridges and buoy lines | Riptide 42 (offshore catamaran) · Skimmer RX (jet ski) |
+| **Air** | 5.3 km sunset sky course through gate rings, 130–240 m up | Hornet Racer (propeller) · Vector Jet |
+
+Race five rivals over three laps. Built with Three.js and Vite; there are no
+image or sound files: every texture is drawn on a canvas at boot and every sound
+is synthesised with Web Audio.
 
 ## Run it
 
@@ -17,48 +24,52 @@ npm run build:single   # everything inlined -> dist-single/index.html
 
 ## Controls
 
-Auto-accelerate is on by default: the car is always on full gas and braking
-takes over while you hold a brake key. Turn it off in the garage to drive with
-manual throttle (↑ / W, RT, or the Gas button). The choice is remembered.
+Auto-accelerate is on by default on road and water: you're always on full gas
+and braking takes over while you hold a brake key (turn it off in the garage for
+manual throttle). Planes always have thrust on.
 
-| Action | Keyboard | Gamepad | Touch |
-| --- | --- | --- | --- |
-| Brake | ↓ or S | LT | Brake |
-| Brake + drift (rear grip drops) | Space | X | Drift |
-| Steer | ← → or A D | Left stick | ◀ ▶ |
-| Nitro (tap) | Shift | A | Nitro |
-| Throttle (manual mode only) | ↑ or W | RT | Gas |
-| Camera (chase, far, cockpit) | C | Y | Camera |
-| Recover onto track | R | B | — |
-| Pause | Esc or P | Start | Pause |
-| Mute | M | — | Sound |
+| Action | Road / Water | Air | Gamepad | Touch |
+| --- | --- | --- | --- | --- |
+| Steer / turn | ← → or A D | ← → or A D | Left stick | ◀ ▶ |
+| Brake | ↓ or S | — | LT | Brake |
+| Climb / dive | — | ↑ / ↓ or W / S | Left stick up/down | Climb / Dive |
+| Brake + drift · power slide · air brake | Space | Space | X | Drift / Slide / Air brake |
+| Nitro (tap) | Shift | Shift | A | Nitro |
+| Throttle (manual mode) | ↑ or W | — | RT | Gas |
+| Camera (chase, far, cockpit) | C | C | Y | Camera |
+| Recover onto the course | R | R | B | — |
+| Pause | Esc or P | Esc or P | Start | Pause |
 
-Nitro is a timed burst: tap Shift for 3 seconds of boost, then it recharges over
-8 seconds (twice as fast while drifting) and chimes when it's ready again. The
-HUD bar shows ready, boosting, or a charging countdown. Tune it in `NITRO` in
-`config.js`.
+Nitro is a timed burst: tap for 3 seconds of boost, then it recharges over
+8 seconds (twice as fast while drifting) and chimes when it's ready again.
+Tune it in `NITRO` in `config.js`.
 
 ## Architecture
 
 ```
 src/
 ├─ main.js               entry: boots Game, shows a WebGL error if it can't
-├─ config.js             every tunable number: vehicles, laps, track width, camera
+├─ config.js             every tunable number: modes + tracks, machines, nitro, camera rigs
 ├─ core/
 │  ├─ Game.js            state machine + main loop, camera rig, collisions, laps, results
 │  ├─ Input.js           keyboard + gamepad + touch -> one normalised control object
 │  └─ AudioEngine.js     synthesised engine, nitro, tyre squeal, impacts
 ├─ world/
-│  ├─ Track.js           spline centreline, arc-length samples, projection, curvature
-│  ├─ Environment.js     road/curb/wall ribbons, lamps (instanced), merged city, sky
+│  ├─ Track.js           spline centreline (with altitude), samples, projection, curvature
+│  ├─ index.js           picks the world builder for a mode
+│  ├─ common.js          shared: ribbons, sky dome, merged city, lights, start gantry
+│  ├─ RoadWorld.js       road, curbs, walls, street lamps
+│  ├─ WaterWorld.js      harbour water shader, buoy lines, bridges, waterfront
+│  ├─ AirWorld.js        sunset sky, gate rings, clouds, mountains, city below
 │  └─ textures.js        canvas-generated textures
 ├─ vehicles/
-│  ├─ models.js          procedural car + bike meshes, shared per-frame animation
-│  └─ Vehicle.js         player physics
+│  ├─ models.js          procedural cars, bikes, boats, jet ski, planes + shared animation
+│  ├─ Vehicle.js         ground and water physics (cars, bikes, boats, jet ski)
+│  └─ Plane.js           flight physics
 ├─ ai/
 │  └─ AIRacer.js         AI drivers
 ├─ fx/
-│  └─ Particles.js       pooled tyre smoke and sparks
+│  └─ Particles.js       pooled tyre smoke, sparks, wakes, spray, contrails
 └─ ui/
    ├─ Menu.js            garage: vehicle and paint select with live 3D preview
    ├─ HUD.js             speed, gear, rpm, nitro, position, lap times, banners
@@ -124,6 +135,16 @@ move out of the way of a player directly ahead, use nitro on straights, and
 apply mild rubber-banding (at most +12% when behind the player, −7% when ahead)
 so a clean race still wins.
 
+### Modes
+
+A mode bundles a track definition, a world builder and its machines
+(`MODES` in `config.js`). `Game.loadMode()` builds a mode's scene the first
+time you open it and caches it, so switching tabs in the garage is instant
+afterwards. Water uses the ground physics with low grip, heavy drag when
+coasting, hull bob and bow lift. Planes use `Plane.js`: always-on thrust,
+coordinated turns, climb and dive that trade speed for height, and a corridor
+of gates instead of walls. Air races use a rolling start.
+
 ### Rendering budget
 
 Lamps use instanced meshes, the ~340 buildings are merged into one geometry
@@ -147,7 +168,10 @@ Or from the command line: `npx vercel` (preview) and `npx vercel --prod`.
 
 - **New vehicle:** add an entry to `VEHICLES` in `config.js`; give it a model
   variant in `models.js` if you want a distinct shape.
-- **New track:** change `CONTROL` in `Track.js`. Keep the tightest radius above
-  about 40 m and sections at least 60 m apart so walls don't intersect.
+- **New track:** change a mode's `track.control` in `config.js` (add a third
+  value for altitude in the air). Keep the tightest radius above about 40 m on
+  the ground and 130 m in the air, and sections well apart so edges don't cross.
+- **New mode:** add an entry to `MODES`, machines with that `mode`, and a world
+  builder registered in `src/world/index.js`.
 - **Ideas:** time-trial ghost (record player state per frame), track
   selection, damage, police chases, online leaderboard.

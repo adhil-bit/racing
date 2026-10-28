@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Apex Rush — night city racing</title>
-  <meta name="description" content="Three laps through a neon city. Race cars and superbikes against five rivals, right in your browser." />
+  <title>SkyDrive X — road, water and air racing</title>
+  <meta name="description" content="Race cars and superbikes through a neon city, powerboats through the harbour, and planes through sky gates — right in your browser." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=Saira+Condensed:wght@600;800&display=swap" rel="stylesheet" />
@@ -15,21 +15,12 @@
 
   <section id="menu" class="menu" aria-label="Garage">
     <div class="menu-panel">
-      <h1 class="logo">Apex Rush</h1>
-      <p class="tagline">Three laps through the night city. Pick a machine.</p>
-      <div class="menu-scroll">
+      <h1 class="logo">SkyDrive X</h1>
+      <div id="mode-tabs" class="modes" role="tablist" aria-label="Race type"></div>
+      <p id="tagline" class="tagline">Three laps through the night city. Pick a machine.</p>      <div class="menu-scroll">
       <div id="vehicle-list" class="vlist"></div>
       <div id="vehicle-detail" class="vdetail"></div>
-      <dl class="keys">
-        <div><dt>← → / A D</dt><dd>Steer</dd></div>
-        <div><dt>↓ / S</dt><dd>Brake</dd></div>
-        <div><dt>Space</dt><dd>Brake + drift</dd></div>
-        <div><dt>Shift</dt><dd>Nitro (tap)</dd></div>
-        <div class="manual-only"><dt>↑ / W</dt><dd>Gas</dd></div>
-        <div><dt>C</dt><dd>Camera</dd></div>
-        <div><dt>R</dt><dd>Recover</dd></div>
-        <div><dt>Esc</dt><dd>Pause</dd></div>
-      </dl>
+      <dl id="keys" class="keys"></dl>
       </div>
       <label class="toggle">
         <input id="auto-gas" type="checkbox" checked />

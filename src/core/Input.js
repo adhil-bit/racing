@@ -18,6 +18,7 @@ export class Input {
     this.state = { throttle: 0, brake: 0, steer: 0, handbrake: false, nitro: false };
     this.nitroPressed = false; // latched until the next poll so instant taps aren't lost
     this.autoThrottle = true; // full throttle unless braking; toggled from the garage
+    this.flightMode = false;  // air races: ↑/↓ climb and dive, Space is the air brake
     this.prevPadButtons = [];
 
     window.addEventListener('keydown', (e) => {
@@ -63,12 +64,15 @@ export class Input {
     let steer = (has('right') ? 1 : 0) - (has('left') ? 1 : 0);
     let handbrake = has('hand');
     let nitro = has('nitro');
+    let pitch = (has('up') ? 1 : 0) - (has('down') ? 1 : 0);
 
     const pads = navigator.getGamepads ? navigator.getGamepads() : [];
     const pad = pads && Array.from(pads).find(Boolean);
     if (pad) {
       const ax = pad.axes[0] || 0;
       if (Math.abs(ax) > 0.12) steer = ax;
+      const ay = pad.axes[1] || 0;
+      if (Math.abs(ay) > 0.15) pitch = -ay;
       const rt = pad.buttons[7]?.value || 0;
       const lt = pad.buttons[6]?.value || 0;
       throttle = Math.max(throttle, rt);
@@ -87,10 +91,13 @@ export class Input {
       }
     }
     // auto-accelerate: Down/S or Space take over; releasing them goes straight back to full gas
-    if (this.autoThrottle) throttle = brake > 0.05 || handbrake ? 0 : 1;
+    if (this.flightMode) {
+      brake = 0;
+      throttle = handbrake ? 0 : 1;
+    } else if (this.autoThrottle) throttle = brake > 0.05 || handbrake ? 0 : 1;
     const nitroPress = this.nitroPressed;
     this.nitroPressed = false;
-    Object.assign(this.state, { throttle, brake, steer, handbrake, nitro, nitroPress });
+    Object.assign(this.state, { throttle, brake, steer, handbrake, nitro, nitroPress, pitch });
     return this.state;
   }
 }

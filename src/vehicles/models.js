@@ -283,26 +283,213 @@ export function buildBike(color, variant = 'super') {
   return { root, tilt, wheels, steerPivots, flames: [f], brakeMat, kind: 'bike' };
 }
 
-export function buildModel(spec, color) {
-  if (spec.kind === 'bike') return buildBike(color, spec.id === 'shade' ? 'naked' : 'super');
-  return buildCar(color, spec.id === 'atlas' ? 'muscle' : 'gt');
+// Plan-view outline (x, z) extruded upward into a thin slab: wings, tailplanes.
+function planform(points, thickness, mat) {
+  const sh = new THREE.Shape();
+  points.forEach(([x, z], i) => (i ? sh.lineTo(x, -z) : sh.moveTo(x, -z)));
+  sh.closePath();
+  const g = new THREE.ExtrudeGeometry(sh, { depth: thickness, bevelEnabled: true, bevelThickness: thickness * 0.3, bevelSize: thickness * 0.3, bevelSegments: 2 });
+  g.translate(0, 0, -thickness / 2);
+  g.rotateX(-Math.PI / 2); // shape (x, -z) -> world (x, z); extrusion -> world y
+  g.computeVertexNormals();
+  return new THREE.Mesh(g, mat);
 }
 
-// Shared per-frame animation for player and AI.
-// lean: radians (bikes roll, cars get a small body roll in the opposite sense)
-export function animateModel(m, { dt, speed, steer, lean, pitch = 0, nitro, braking }) {
-  for (const w of m.wheels) w.rotation.x += (speed * dt) / w.userData.radius;
-  for (const p of m.steerPivots) p.rotation.y = -steer * (m.kind === 'bike' ? 0.25 : 0.45);
-  if (m.kind === 'bike') {
-    m.tilt.rotation.z = lean;
-    m.tilt.rotation.x = pitch;
-  } else {
-    m.tilt.rotation.z = -lean * 0.12;
-    m.tilt.rotation.x = pitch * 0.5;
+function navLights(group, x, y, z) {
+  group.add(box(0.12, 0.12, 0.12, new THREE.MeshBasicMaterial({ color: 0xff3355 }), -x, y, z));
+  group.add(box(0.12, 0.12, 0.12, new THREE.MeshBasicMaterial({ color: 0x18c99a }), x, y, z));
+}
+
+const whiteMat = new THREE.MeshStandardMaterial({ color: 0xeef2ff, roughness: 0.4 });
+const suitMat = new THREE.MeshStandardMaterial({ color: 0x232a44, roughness: 0.7 });
+
+// Offshore racing catamaran. Waterline is y = 0; origin at mid-hull.
+export function buildBoat(color) {
+  const root = new THREE.Group();
+  const tilt = new THREE.Group();
+  root.add(tilt);
+  const body = paint(color);
+  for (const sx of [-0.85, 0.85]) {
+    const hull = profileMesh([[-4.0, -0.25], [3.0, -0.25], [4.3, 0.35], [4.2, 0.7], [-4.1, 0.7]], [], 0.5, darkMat, 0.1);
+    hull.position.x = sx;
+    tilt.add(hull);
   }
+  tilt.add(profileMesh([[-4.1, 0.55], [3.4, 0.55], [4.15, 0.75], [2.6, 1.05], [0.4, 1.15], [-4.0, 1.1]], [], 1.85, body, 0.12));
+  tilt.add(profileMesh([[1.3, 1.08], [0.3, 1.75], [-1.2, 1.78], [-1.7, 1.12]], [], 1.1, glassMat, 0.08));
+  for (const sx of [-1, 1]) tilt.add(box(0.05, 0.14, 6.4, whiteMat, sx * 1.07, 0.82, -0.2));
+  tilt.add(box(1.6, 0.1, 0.7, whiteMat, 0, 1.33, -3.2)); // aerofoil on the deck
+  navLights(tilt, 1.0, 1.0, 1.4);
+  const brakeMat = new THREE.MeshBasicMaterial({ color: 0x8a1020 });
+  tilt.add(box(1.4, 0.08, 0.05, brakeMat, 0, 1.05, -4.25));
+  // twin outboards on steering pivots
+  const steerPivots = [];
+  for (const sx of [-0.6, 0.6]) {
+    const pivot = new THREE.Group();
+    pivot.position.set(sx, 0.4, -4.25);
+    pivot.add(box(0.42, 1.1, 0.55, darkMat, 0, 0.35, -0.25));
+    pivot.add(box(0.44, 0.35, 0.6, body, 0, 0.95, -0.25));
+    tilt.add(pivot);
+    steerPivots.push(pivot);
+  }
+  const flames = [];
+  for (const x of [-0.6, 0.6]) {
+    const f = flame();
+    f.position.set(x, 0.55, -5.0);
+    tilt.add(f);
+    flames.push(f);
+  }
+  return { root, tilt, wheels: [], steerPivots, flames, brakeMat, kind: 'boat' };
+}
+
+// Sit-down jet ski with rider; leans into turns like a bike.
+export function buildJetski(color) {
+  const root = new THREE.Group();
+  const tilt = new THREE.Group();
+  root.add(tilt);
+  const body = paint(color);
+  tilt.add(profileMesh([[-1.5, -0.2], [1.0, -0.2], [1.6, 0.25], [1.35, 0.55], [0.2, 0.62], [-1.5, 0.5]], [], 0.72, body, 0.1));
+  tilt.add(box(0.36, 0.18, 0.95, darkMat, 0, 0.74, -0.45));
+  tilt.add(box(0.62, 0.28, 0.42, body, 0, 0.78, 0.55, -0.4));
+  tilt.add(box(0.8, 0.05, 0.3, whiteMat, 0, 0.42, -1.3));
+  const bars = new THREE.Group();
+  bars.position.set(0, 1.0, 0.4);
+  bars.add(box(0.85, 0.06, 0.06, darkMat, 0, 0, 0));
+  bars.add(box(0.08, 0.3, 0.08, darkMat, 0, -0.15, 0.05));
+  tilt.add(bars);
+  // rider
+  const torso = box(0.44, 0.62, 0.3, suitMat, 0, 1.25, -0.25, 0.35);
+  const vest = box(0.48, 0.4, 0.34, body, 0, 1.3, -0.24, 0.35);
+  const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.2, 14, 10), body);
+  helmet.position.set(0, 1.68, -0.02);
+  const visor = new THREE.Mesh(new THREE.SphereGeometry(0.17, 12, 8, 0, Math.PI * 2, 0, 1.2), glassMat);
+  visor.position.set(0, 1.68, 0.05);
+  visor.rotation.x = 1.4;
+  tilt.add(torso, vest, helmet, visor);
+  for (const sx of [-1, 1]) {
+    tilt.add(box(0.1, 0.1, 0.55, suitMat, sx * 0.26, 1.2, 0.15, 0.6));
+    tilt.add(box(0.14, 0.14, 0.6, suitMat, sx * 0.22, 0.86, -0.2, -0.2));
+    tilt.add(box(0.12, 0.45, 0.14, suitMat, sx * 0.24, 0.62, 0.1));
+  }
+  const brakeMat = new THREE.MeshBasicMaterial({ color: 0x8a1020 });
+  tilt.add(box(0.3, 0.06, 0.04, brakeMat, 0, 0.5, -1.52));
+  tilt.add(box(0.2, 0.08, 0.04, headMat, 0, 0.72, 1.48));
+  const f = flame();
+  f.position.set(0, 0.25, -1.9);
+  f.scale.setScalar(0.8);
+  tilt.add(f);
+  return { root, tilt, wheels: [], steerPivots: [bars], flames: [f], brakeMat, kind: 'jetski' };
+}
+
+// Air racers. Origin at the centre of gravity, nose toward +Z.
+export function buildPlane(color, variant = 'prop') {
+  const root = new THREE.Group();
+  const tilt = new THREE.Group();
+  root.add(tilt);
+  const body = paint(color);
+  const brakeMat = new THREE.MeshBasicMaterial({ color: 0x8a1020 });
+  const flames = [];
+  let prop = null;
+  const along = (geo) => { geo.rotateX(Math.PI / 2); return geo; }; // y-axis primitives -> z-axis
+
+  if (variant === 'jet') {
+    tilt.add(new THREE.Mesh(along(new THREE.CylinderGeometry(0.46, 0.56, 5.2, 16)), body).translateZ(0.3));
+    tilt.add(new THREE.Mesh(along(new THREE.ConeGeometry(0.46, 1.8, 16)), body).translateZ(3.8));
+    tilt.add(new THREE.Mesh(along(new THREE.CylinderGeometry(0.5, 0.42, 0.6, 16)), darkMat).translateZ(-2.55));
+    const canopy = new THREE.Mesh(new THREE.SphereGeometry(0.4, 16, 10), glassMat);
+    canopy.scale.set(0.95, 0.85, 2.6);
+    canopy.position.set(0, 0.42, 1.6);
+    tilt.add(canopy);
+    const wing = planform([[-0.4, 1.4], [-3.7, -1.5], [-3.7, -2.1], [3.7, -2.1], [3.7, -1.5], [0.4, 1.4]], 0.12, body);
+    wing.position.set(0, -0.12, -0.2);
+    tilt.add(wing);
+    tilt.add(planform([[-1.2, -0.1], [-0.3, 0.45], [0.3, 0.45], [1.2, -0.1], [1.2, -0.35], [-1.2, -0.35]], 0.06, body).translateZ(2.6).translateY(0.05));
+    for (const sx of [-1, 1]) {
+      const fin = profileMesh([[-2.5, 0], [-1.5, 0], [-2.3, 1.45], [-2.75, 1.45]], [], 0.06, body, 0.03);
+      fin.position.set(sx * 0.5, 0.25, 0);
+      fin.rotation.z = -sx * 0.28;
+      tilt.add(fin);
+      tilt.add(box(0.36, 0.5, 1.6, darkMat, sx * 0.62, -0.05, 1.0));
+      tilt.add(box(0.5, 0.05, 2.6, whiteMat, sx * 2.2, -0.02, -1.5));
+    }
+    navLights(tilt, 3.75, -0.05, -1.8);
+    tilt.add(box(0.3, 0.12, 0.05, brakeMat, 0, 0.35, -2.4));
+    const f = flame();
+    f.position.set(0, 0, -3.4);
+    f.scale.set(2.2, 1.6, 2.2);
+    tilt.add(f);
+    flames.push(f);
+  } else {
+    tilt.add(new THREE.Mesh(along(new THREE.CylinderGeometry(0.58, 0.22, 6.4, 16)), body).translateZ(-0.2));
+    tilt.add(new THREE.Mesh(along(new THREE.CylinderGeometry(0.62, 0.6, 0.8, 16)), darkMat).translateZ(3.1));
+    tilt.add(new THREE.Mesh(along(new THREE.ConeGeometry(0.26, 0.6, 12)), whiteMat).translateZ(3.75));
+    prop = new THREE.Group();
+    prop.position.z = 3.55;
+    for (let k = 0; k < 3; k++) {
+      const blade = box(0.18, 1.35, 0.05, darkMat, 0, 0.68, 0);
+      const holder = new THREE.Group();
+      holder.rotation.z = (k / 3) * Math.PI * 2;
+      holder.add(blade);
+      prop.add(holder);
+    }
+    tilt.add(prop);
+    const canopy = new THREE.Mesh(new THREE.SphereGeometry(0.42, 16, 10), glassMat);
+    canopy.scale.set(1, 0.9, 2.2);
+    canopy.position.set(0, 0.5, 0.1);
+    tilt.add(canopy);
+    const wing = planform([[-4.4, 0.35], [-0.5, 0.95], [0.5, 0.95], [4.4, 0.35], [4.4, -0.3], [0.5, -0.75], [-0.5, -0.75], [-4.4, -0.3]], 0.14, body);
+    wing.position.set(0, -0.2, 0.6);
+    tilt.add(wing);
+    for (const sx of [-1, 1]) tilt.add(box(0.7, 0.03, 0.9, whiteMat, sx * 3.2, -0.11, 0.65));
+    tilt.add(planform([[-1.7, 0.15], [-0.2, 0.5], [0.2, 0.5], [1.7, 0.15], [1.7, -0.3], [-1.7, -0.3]], 0.08, body).translateZ(-3.05).translateY(0.05));
+    tilt.add(profileMesh([[-3.55, 0.1], [-2.55, 0.1], [-3.05, 1.35], [-3.5, 1.35]], [], 0.08, body, 0.03));
+    navLights(tilt, 4.45, -0.15, 0.6);
+    tilt.add(box(0.12, 0.12, 0.05, brakeMat, 0, 0.75, -3.6));
+    for (const sx of [-1, 1]) {
+      const f = flame();
+      f.position.set(sx * 0.62, 0, 1.9);
+      f.scale.setScalar(0.6);
+      tilt.add(f);
+      flames.push(f);
+    }
+  }
+  return { root, tilt, wheels: [], steerPivots: [], flames, brakeMat, prop, kind: 'plane' };
+}
+
+export function buildModel(spec, color) {
+  switch (spec.kind) {
+    case 'bike': return buildBike(color, spec.id === 'shade' ? 'naked' : 'super');
+    case 'boat': return buildBoat(color);
+    case 'jetski': return buildJetski(color);
+    case 'plane': return buildPlane(color, spec.variant);
+    default: return buildCar(color, spec.id === 'atlas' ? 'muscle' : 'gt');
+  }
+}
+
+const STEER_ANGLE = { car: 0.45, bike: 0.25, boat: 0.45, jetski: 0.5, plane: 0 };
+
+// Shared per-frame animation for player and AI.
+// lean: roll in radians, +right. pitch: +nose down. bob: vertical offset (water).
+export function animateModel(m, { dt, speed, steer, lean, pitch = 0, nitro, braking, bob = 0 }) {
+  for (const w of m.wheels) w.rotation.x += (speed * dt) / w.userData.radius;
+  for (const p of m.steerPivots) p.rotation.y = -steer * STEER_ANGLE[m.kind];
+  switch (m.kind) {
+    case 'car':
+      m.tilt.rotation.z = -lean * 0.12;
+      m.tilt.rotation.x = pitch * 0.5;
+      break;
+    case 'boat':
+      m.tilt.rotation.z = lean * 0.35;
+      m.tilt.rotation.x = pitch;
+      break;
+    default: // bike, jetski, plane: full roll into the turn
+      m.tilt.rotation.x = pitch;
+      m.tilt.rotation.z = lean;
+  }
+  m.tilt.position.y = bob;
+  if (m.prop) m.prop.rotation.z += dt * (35 + speed * 0.5);
   for (const f of m.flames) {
     f.visible = nitro;
-    if (nitro) f.scale.set(1, 0.8 + Math.random() * 0.8, 1);
+    if (nitro) f.scale.y = (m.kind === 'plane' && m.flames.length === 1 ? 1.6 : 1) * (0.8 + Math.random() * 0.8);
   }
   m.brakeMat.color.setHex(braking ? 0xff2a40 : 0x8a1020);
 }

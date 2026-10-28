@@ -1,6 +1,16 @@
 import * as THREE from 'three';
-import { TRACK, NITRO } from '../config.js';
+import { NITRO } from '../config.js';
 import { buildModel, animateModel } from './models.js';
+
+// Collision footprint per kind: halfWidth for walls, radius for racer contact.
+export const DIMS = {
+  car: { halfWidth: 1.05, radius: 1.7 },
+  bike: { halfWidth: 0.45, radius: 1.1 },
+  boat: { halfWidth: 1.3, radius: 2.8 },
+  jetski: { halfWidth: 0.5, radius: 1.3 },
+  plane: { halfWidth: 4.2, radius: 4.6 },
+};
+export const isWater = (kind) => kind === 'boat' || kind === 'jetski';
 
 const F = new THREE.Vector3();
 const R = new THREE.Vector3();
@@ -18,15 +28,19 @@ export class Vehicle {
     this.isPlayer = true;
     this.model = buildModel(spec, color);
     scene.add(this.model.root);
-    this.halfWidth = spec.kind === 'bike' ? 0.45 : 1.05;
-    this.radius = spec.kind === 'bike' ? 1.1 : 1.7;
+    this.halfWidth = DIMS[spec.kind].halfWidth;
+    this.radius = DIMS[spec.kind].radius;
+    this.water = isWater(spec.kind);
+    this.time = Math.random() * 10;
     this.pos = new THREE.Vector3();
     this.vel = new THREE.Vector3();
 
-    const head = new THREE.SpotLight(0xf2f5ff, 140, 120, 0.42, 0.6, 1.3);
-    head.position.set(0, 1.1, 1.6);
-    head.target.position.set(0, 0, 30);
-    this.model.root.add(head, head.target);
+    if (spec.kind !== 'plane') {
+      const head = new THREE.SpotLight(0xf2f5ff, 140, 120, 0.42, 0.6, 1.3);
+      head.position.set(0, this.water ? 1.6 : 1.1, this.water ? 2.5 : 1.6);
+      head.target.position.set(0, 0, 30);
+      this.model.root.add(head, head.target);
+    }
     this.reset();
   }
 
@@ -130,7 +144,8 @@ export class Vehicle {
       else if (canMove) vf = Math.max(-16, vf - 12 * brake * dt);
       else vf *= Math.max(0, 1 - 8 * dt);
     }
-    if (throttle === 0 && brake === 0) vf -= Math.sign(vf) * Math.min(Math.abs(vf), (2.5 + Math.abs(vf) * 0.03) * dt);
+    const coastDrag = this.water ? 4 + Math.abs(vf) * 0.12 : 2.5 + Math.abs(vf) * 0.03;
+    if (throttle === 0 && brake === 0) vf -= Math.sign(vf) * Math.min(Math.abs(vf), coastDrag * dt);
     if (vf > top) vf -= (vf - top) * 1.2 * dt;
     if (hand) vf -= Math.sign(vf) * Math.min(Math.abs(vf), s.brake * 0.45 * dt);
     this.braking = (brake > 0 || hand) && vf > 1;
@@ -158,7 +173,7 @@ export class Vehicle {
 
     // walls: clamp to the corridor, kill the into-wall component, scrape speed
     const pr = this.updateProgress();
-    const limit = TRACK.width / 2 + TRACK.wallOffset - 0.3 - this.halfWidth;
+    const limit = this.track.width / 2 + this.track.wallOffset - 0.3 - this.halfWidth;
     this.wallHit = Math.max(0, this.wallHit - dt * 3);
     this.scraping = false;
     if (Math.abs(pr.lateral) > limit) {
@@ -226,12 +241,21 @@ export class Vehicle {
 
   syncModel(dt) {
     const m = this.model;
+    this.time += dt;
     m.root.position.copy(this.pos);
     m.root.rotation.y = this.heading;
     // lean = atan(lateral accel / g); yawRate<0 means turning right => lean right (+)
     const lean = clamp(Math.atan((-this.yawRate * this.vf) / 9.8), -0.8, 0.8);
+    let pitch = this.pitch;
+    let bob = 0;
+    if (this.water) {
+      // hull rides the chop; bow lifts as it gets up on the plane
+      const sp = Math.min(1, Math.abs(this.vf) / 25);
+      bob = Math.sin(this.time * 2.3 + this.pos.x * 0.07) * 0.07 + Math.sin(this.time * 3.7 + this.pos.z * 0.05) * 0.05 * (1 + sp);
+      pitch = this.pitch * 1.5 - 0.07 * sp + Math.sin(this.time * 5.1) * 0.012 * sp;
+    }
     animateModel(m, {
-      dt, speed: this.vf, steer: this.steer, lean, pitch: this.pitch,
+      dt, speed: this.vf, steer: this.steer, lean, pitch, bob,
       nitro: this.nitroActive, braking: this.braking,
     });
   }

@@ -1,39 +1,40 @@
 import * as THREE from 'three';
-import { TRACK } from '../config.js';
 
-// Circuit control points (x, z) in "units"; scaled to metres below.
-// Closed Catmull-Rom spline -> resampled at equal arc-length.
-const CONTROL = [
-  [0, 0], [0, 38], [6, 58], [22, 70], [42, 68], [52, 56], [52, 42],
-  [62, 32], [80, 34], [94, 46], [110, 50], [124, 40], [128, 20],
-  [118, 4], [100, 0], [86, -10], [80, -28], [66, -42], [42, -42],
-  [26, -32], [10, -26], [0, -14],
-];
-const SCALE = 8.5;
-
+// Closed Catmull-Rom spline through the mode's control points, resampled at
+// equal arc-length. Control points are [x, z] or [x, z, altitude].
 export class Track {
-  constructor() {
-    const pts = CONTROL.map(([x, z]) => new THREE.Vector3(x * SCALE, 0, z * SCALE));
+  constructor(def) {
+    this.def = def;
+    this.width = def.width;
+    this.curbWidth = def.curbWidth ?? 0;
+    this.wallOffset = def.wallOffset ?? 1.9;
+    this.wallHeight = def.wallHeight ?? 1.2;
+    this.height = def.height ?? 0; // air: vertical size of the gate corridor
+    const pts = def.control.map(([x, z, y = 0]) => new THREE.Vector3(x * def.scale, y, z * def.scale));
     this.curve = new THREE.CatmullRomCurve3(pts, true, 'centripetal');
     this.length = this.curve.getLength();
-    const N = (this.count = TRACK.samples);
+    const N = (this.count = def.samples ?? 1600);
     this.segLen = this.length / N;
     this.points = [];
-    this.tangents = [];
+    this.tangents = [];   // horizontal, normalised
+    this.tangents3 = [];  // full 3D (for gate orientation)
     this.rights = [];
     for (let i = 0; i < N; i++) {
       const u = i / N;
       const p = this.curve.getPointAt(u);
-      const t = this.curve.getTangentAt(u);
+      const t3 = this.curve.getTangentAt(u).normalize();
+      const t = t3.clone();
       t.y = 0;
       t.normalize();
       this.points.push(p);
       this.tangents.push(t);
+      this.tangents3.push(t3);
       // right-hand vector for a +Z-forward, +Y-up frame
       this.rights.push(new THREE.Vector3(-t.z, 0, t.x));
     }
-    // signed curvature (positive = left-hander)
+    // signed curvature (positive = left-hander) and slope (rise / run)
     this.curvature = new Float32Array(N);
+    this.slope = new Float32Array(N);
     const k = 6;
     for (let i = 0; i < N; i++) {
       const a = this.tangents[i];
@@ -41,6 +42,7 @@ export class Track {
       const ang = Math.acos(THREE.MathUtils.clamp(a.dot(b), -1, 1));
       const sign = Math.sign(a.z * b.x - a.x * b.z) || 1;
       this.curvature[i] = (sign * ang) / (k * this.segLen);
+      this.slope[i] = (this.points[(i + 1) % N].y - this.points[i].y) / this.segLen;
     }
     this.bounds = new THREE.Box3().setFromPoints(this.points);
   }
@@ -84,6 +86,7 @@ export class Track {
     out.tan.lerpVectors(this.tangents[i], this.tangents[j], a).normalize();
     out.right.set(-out.tan.z, 0, out.tan.x);
     out.index = i;
+    out.slope = this.slope[i];
     return out;
   }
 
