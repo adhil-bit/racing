@@ -131,8 +131,8 @@ export class Vehicle {
     }
     if (throttle === 0 && brake === 0) vf -= Math.sign(vf) * Math.min(Math.abs(vf), (2.5 + Math.abs(vf) * 0.03) * dt);
     if (vf > top) vf -= (vf - top) * 1.2 * dt;
-    if (hand) vf -= Math.sign(vf) * Math.min(Math.abs(vf), 5 * dt);
-    this.braking = brake > 0 && vf > 1;
+    if (hand) vf -= Math.sign(vf) * Math.min(Math.abs(vf), s.brake * 0.45 * dt);
+    this.braking = (brake > 0 || hand) && vf > 1;
     this.pitch += ((clamp((prevVf - vf) / dt, -30, 50) * 0.002) - this.pitch) * Math.min(1, dt * 6);
 
     this.vel.copy(F).multiplyScalar(vf).addScaledVector(R, vr);

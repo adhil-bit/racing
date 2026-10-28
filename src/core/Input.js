@@ -16,6 +16,7 @@ export class Input {
     this.touch = new Set();
     this.listeners = {};
     this.state = { throttle: 0, brake: 0, steer: 0, handbrake: false, nitro: false };
+    this.autoThrottle = true; // full throttle unless braking; toggled from the garage
     this.prevPadButtons = [];
 
     window.addEventListener('keydown', (e) => {
@@ -75,6 +76,8 @@ export class Input {
         this.prevPadButtons[i] = p;
       }
     }
+    // auto-accelerate: Down/S or Space take over; releasing them goes straight back to full gas
+    if (this.autoThrottle) throttle = brake > 0.05 || handbrake ? 0 : 1;
     Object.assign(this.state, { throttle, brake, steer, handbrake, nitro });
     return this.state;
   }

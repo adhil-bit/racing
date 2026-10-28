@@ -21,14 +21,21 @@
       <div id="vehicle-list" class="vlist"></div>
       <div id="vehicle-detail" class="vdetail"></div>
       <dl class="keys">
-        <div><dt>W A S D / arrows</dt><dd>Drive</dd></div>
+        <div><dt>← → / A D</dt><dd>Steer</dd></div>
+        <div><dt>↓ / S</dt><dd>Brake</dd></div>
+        <div><dt>Space</dt><dd>Brake + drift</dd></div>
         <div><dt>Shift</dt><dd>Nitro</dd></div>
-        <div><dt>Space</dt><dd>Handbrake drift</dd></div>
+        <div class="manual-only"><dt>↑ / W</dt><dd>Gas</dd></div>
         <div><dt>C</dt><dd>Camera</dd></div>
         <div><dt>R</dt><dd>Recover</dd></div>
         <div><dt>Esc</dt><dd>Pause</dd></div>
       </dl>
       </div>
+      <label class="toggle">
+        <input id="auto-gas" type="checkbox" checked />
+        <span class="toggle-track" aria-hidden="true"></span>
+        <span class="toggle-text"><b>Auto-accelerate</b><small id="auto-gas-hint">Always on gas. Brake to slow down.</small></span>
+      </label>
       <button id="start-btn" class="btn btn-primary" type="button">Start race</button>
     </div>
   </section>

@@ -68,6 +68,11 @@ export class Game {
       onStart: () => this.startRace(),
     });
     this.selection = { spec: this.menu.spec, color: this.menu.color };
+    this.setAutoGas(this.saved.autoGas !== false);
+    $('auto-gas').addEventListener('change', (e) => {
+      this.setAutoGas(e.target.checked);
+      this.persist({ autoGas: e.target.checked });
+    });
     this.buildGrid();
     this.bindControls();
 
@@ -139,6 +144,13 @@ export class Game {
     $('again-btn').addEventListener('click', () => this.startRace());
     $('garage-btn').addEventListener('click', () => this.toGarage());
     this.syncMuteLabel();
+  }
+
+  setAutoGas(on) {
+    this.input.autoThrottle = on;
+    $('auto-gas').checked = on;
+    $('auto-gas-hint').textContent = on ? 'Always on gas. Brake to slow down.' : 'Hold ↑ or W to accelerate.';
+    document.body.classList.toggle('auto-gas', on);
   }
 
   toggleMute() {

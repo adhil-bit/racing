@@ -17,12 +17,17 @@ npm run build:single   # everything inlined -> dist-single/index.html
 
 ## Controls
 
+Auto-accelerate is on by default: the car is always on full gas and braking
+takes over while you hold a brake key. Turn it off in the garage to drive with
+manual throttle (↑ / W, RT, or the Gas button). The choice is remembered.
+
 | Action | Keyboard | Gamepad | Touch |
 | --- | --- | --- | --- |
-| Throttle / brake | W S or arrows | RT / LT | Gas / Brake |
-| Steer | A D or arrows | Left stick | ◀ ▶ |
+| Brake | ↓ or S | LT | Brake |
+| Brake + drift (rear grip drops) | Space | X | Drift |
+| Steer | ← → or A D | Left stick | ◀ ▶ |
 | Nitro | Shift | A | Nitro |
-| Handbrake drift | Space | X | Drift |
+| Throttle (manual mode only) | ↑ or W | RT | Gas |
 | Camera (chase, far, cockpit) | C | Y | Camera |
 | Recover onto track | R | B | — |
 | Pause | Esc or P | Start | Pause |
