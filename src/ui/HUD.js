@@ -28,6 +28,7 @@ export class HUD {
     this.gear = $('hud-gear');
     this.rpm = $('hud-rpm');
     this.nitro = $('hud-nitro');
+    this.nitroLabel = $('hud-nitro-label');
     this.pos = $('hud-pos');
     this.posOf = $('hud-pos-of');
     this.lap = $('hud-lap');
@@ -52,7 +53,15 @@ export class HUD {
     this.set(this.gear, 'gear', gear);
     this.rpm.style.transform = `scaleX(${Math.min(1, rpm).toFixed(3)})`;
     this.nitro.style.transform = `scaleX(${d.nitro.toFixed(3)})`;
-    this.nitro.parentElement.classList.toggle('is-active', d.nitroActive);
+    const bar = this.nitro.parentElement;
+    if (bar.dataset.state !== d.nitroPhase) {
+      bar.dataset.state = d.nitroPhase;
+      document.body.dataset.nitro = d.nitroPhase; // dims the touch button while charging
+    }
+    const label = d.nitroPhase === 'ready' ? 'Nitro ready'
+      : d.nitroPhase === 'boost' ? 'Boost'
+      : `Charging ${Math.ceil(d.nitroEta)}s`;
+    this.set(this.nitroLabel, 'nitroLabel', label);
     this.set(this.pos, 'pos', String(d.position));
     this.set(this.posOf, 'posOf', `/${d.racers}`);
     this.set(this.lap, 'lap', `Lap ${Math.min(d.lap, d.laps)} of ${d.laps}`);

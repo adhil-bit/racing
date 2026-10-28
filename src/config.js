@@ -53,6 +53,13 @@ export const AI_ROSTER = [
   { name: 'Okafor', skill: 0.93 },
 ];
 
+// Nitro is a timed burst: tap to fire, then it recharges before it can be used again.
+export const NITRO = {
+  duration: 3,         // seconds of boost per tap
+  recharge: 8,         // seconds to refill from empty
+  driftMultiplier: 2,  // recharge runs this much faster while drifting
+};
+
 export const CAMERA = {
   baseFov: 66,
   speedFov: 14,   // extra FOV at top speed

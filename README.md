@@ -26,14 +26,17 @@ manual throttle (↑ / W, RT, or the Gas button). The choice is remembered.
 | Brake | ↓ or S | LT | Brake |
 | Brake + drift (rear grip drops) | Space | X | Drift |
 | Steer | ← → or A D | Left stick | ◀ ▶ |
-| Nitro | Shift | A | Nitro |
+| Nitro (tap) | Shift | A | Nitro |
 | Throttle (manual mode only) | ↑ or W | RT | Gas |
 | Camera (chase, far, cockpit) | C | Y | Camera |
 | Recover onto track | R | B | — |
 | Pause | Esc or P | Start | Pause |
 | Mute | M | — | Sound |
 
-Nitro drains while held and refills slowly on its own, and much faster while drifting.
+Nitro is a timed burst: tap Shift for 3 seconds of boost, then it recharges over
+8 seconds (twice as fast while drifting) and chimes when it's ready again. The
+HUD bar shows ready, boosting, or a charging countdown. Tune it in `NITRO` in
+`config.js`.
 
 ## Architecture
 

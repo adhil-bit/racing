@@ -323,6 +323,10 @@ export class Game {
     } else if (p.scraping && Math.abs(p.vf) > 12 && Math.random() < 0.5) {
       this.particles.sparkBurst(p.pos, p.vel.clone().normalize(), 1);
     }
+    if (p.nitroReadyEvent && !p.finished) {
+      this.hud.flash('Nitro ready', 1.4, 'good');
+      this.audio.chime();
+    }
     if (p.wrongWay > 1.2 && !p.finished) this.hud.wrongWay(true);
 
     this.updateCamera(dt);
@@ -450,6 +454,8 @@ export class Game {
       speed: p.vf,
       nitro: p.nitro,
       nitroActive: p.nitroActive,
+      nitroPhase: p.nitroPhase,
+      nitroEta: p.nitroEta,
       position: order.indexOf(p) + 1,
       racers: this.racers.length,
       lap: Math.max(1, p.lapCounter + 1),

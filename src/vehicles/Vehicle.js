@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { TRACK } from '../config.js';
+import { TRACK, NITRO } from '../config.js';
 import { buildModel, animateModel } from './models.js';
 
 const F = new THREE.Vector3();
@@ -37,7 +37,11 @@ export class Vehicle {
     this.vr = 0;
     this.steer = 0;
     this.yawRate = 0;
-    this.nitro = 1;
+    this.nitro = 1;              // bar fill 0..1
+    this.nitroPhase = 'ready';   // ready -> boost -> charging -> ready
+    this.nitroTimer = 0;
+    this.nitroHeld = false;
+    this.nitroReadyEvent = false;
     this.nitroActive = false;
     this.drifting = false;
     this.braking = false;
@@ -112,10 +116,7 @@ export class Vehicle {
     let vf = this.vel.dot(F);
     let vr = this.vel.dot(R);
 
-    // nitro: drains while held, refills slowly and faster while drifting
-    this.nitroActive = canMove && ctl.nitro && this.nitro > 0.01 && vf > 4;
-    if (this.nitroActive) this.nitro = Math.max(0, this.nitro - dt * 0.3);
-    else this.nitro = Math.min(1, this.nitro + dt * (0.03 + (this.drifting ? 0.16 : 0)));
+    this.updateNitro(dt, ctl, canMove, vf);
     const top = s.top * (this.nitroActive ? s.nitro : 1);
 
     // longitudinal
@@ -190,6 +191,37 @@ export class Vehicle {
     this.wrongWay = facing < -0.3 && this.vf > 6 ? this.wrongWay + dt : 0;
 
     this.syncModel(dt);
+  }
+
+  // Tap-to-fire burst. Holding the key doesn't re-fire; it needs a fresh press.
+  updateNitro(dt, ctl, canMove, vf) {
+    const pressed = ctl.nitroPress ?? (ctl.nitro && !this.nitroHeld);
+    this.nitroHeld = ctl.nitro;
+    this.nitroReadyEvent = false;
+    if (this.nitroPhase === 'ready' && pressed && canMove && vf > 4) {
+      this.nitroPhase = 'boost';
+      this.nitroTimer = NITRO.duration;
+    }
+    if (this.nitroPhase === 'boost') {
+      this.nitroTimer -= dt;
+      this.nitro = Math.max(0, this.nitroTimer / NITRO.duration);
+      if (this.nitroTimer <= 0) {
+        this.nitroPhase = 'charging';
+        this.nitro = 0;
+      }
+    } else if (this.nitroPhase === 'charging') {
+      this.nitro += (dt / NITRO.recharge) * (this.drifting ? NITRO.driftMultiplier : 1);
+      if (this.nitro >= 1) {
+        this.nitro = 1;
+        this.nitroPhase = 'ready';
+        this.nitroReadyEvent = true;
+      }
+    }
+    this.nitroActive = this.nitroPhase === 'boost';
+  }
+
+  get nitroEta() {
+    return this.nitroPhase === 'charging' ? (1 - this.nitro) * NITRO.recharge : 0;
   }
 
   syncModel(dt) {

@@ -16,12 +16,14 @@ export class Input {
     this.touch = new Set();
     this.listeners = {};
     this.state = { throttle: 0, brake: 0, steer: 0, handbrake: false, nitro: false };
+    this.nitroPressed = false; // latched until the next poll so instant taps aren't lost
     this.autoThrottle = true; // full throttle unless braking; toggled from the garage
     this.prevPadButtons = [];
 
     window.addEventListener('keydown', (e) => {
       const k = KEYMAP[e.code];
       if (k) { this.keys.add(k); e.preventDefault(); }
+      if (k === 'nitro' && !e.repeat) this.nitroPressed = true;
       if (!e.repeat) this.emit(e.code);
     });
     window.addEventListener('keyup', (e) => {
@@ -32,7 +34,12 @@ export class Input {
 
     document.querySelectorAll('[data-control]').forEach((el) => {
       const c = el.dataset.control;
-      const on = (e) => { e.preventDefault(); this.touch.add(c); el.classList.add('is-down'); };
+      const on = (e) => {
+        e.preventDefault();
+        this.touch.add(c);
+        el.classList.add('is-down');
+        if (c === 'nitro') this.nitroPressed = true;
+      };
       const off = (e) => { e.preventDefault(); this.touch.delete(c); el.classList.remove('is-down'); };
       el.addEventListener('pointerdown', on);
       el.addEventListener('pointerup', off);
@@ -67,7 +74,10 @@ export class Input {
       throttle = Math.max(throttle, rt);
       brake = Math.max(brake, lt);
       handbrake ||= !!pad.buttons[2]?.pressed;
-      nitro ||= !!pad.buttons[0]?.pressed;
+      const padNitro = !!pad.buttons[0]?.pressed;
+      if (padNitro && !this.prevPadButtons[0]) this.nitroPressed = true;
+      this.prevPadButtons[0] = padNitro;
+      nitro ||= padNitro;
       // start button -> pause, Y -> camera, B -> reset
       const map = { 9: 'Escape', 3: 'KeyC', 1: 'KeyR' };
       for (const [i, code] of Object.entries(map)) {
@@ -78,7 +88,9 @@ export class Input {
     }
     // auto-accelerate: Down/S or Space take over; releasing them goes straight back to full gas
     if (this.autoThrottle) throttle = brake > 0.05 || handbrake ? 0 : 1;
-    Object.assign(this.state, { throttle, brake, steer, handbrake, nitro });
+    const nitroPress = this.nitroPressed;
+    this.nitroPressed = false;
+    Object.assign(this.state, { throttle, brake, steer, handbrake, nitro, nitroPress });
     return this.state;
   }
 }

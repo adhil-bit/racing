@@ -110,6 +110,25 @@ export class AudioEngine {
     o.stop(t + 0.7);
   }
 
+  // two rising notes: nitro recharged
+  chime() {
+    if (!this.ctx || this.muted) return;
+    const ctx = this.ctx;
+    const t = ctx.currentTime;
+    [660, 990].forEach((f, i) => {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = 'sine';
+      o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t + i * 0.09);
+      g.gain.exponentialRampToValueAtTime(0.14, t + i * 0.09 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + i * 0.09 + 0.25);
+      o.connect(g).connect(this.master);
+      o.start(t + i * 0.09);
+      o.stop(t + i * 0.09 + 0.3);
+    });
+  }
+
   silence() {
     this.update({ rpm: 0, load: 0, nitro: false, skid: 0, active: false });
   }

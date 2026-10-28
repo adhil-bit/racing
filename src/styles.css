@@ -135,7 +135,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .nitro { height: 10px; }
 .nitro i { background: var(--nitro); box-shadow: 0 0 10px rgba(79, 227, 255, 0.6); }
 .nitro span { position: absolute; right: 0; top: 0.9rem; font-size: 0.72rem; color: var(--nitro); transform: skewX(20deg); }
-.nitro.is-active i { background: #b9f4ff; }
+.nitro[data-state="boost"] i { background: #c9f7ff; box-shadow: 0 0 16px rgba(79, 227, 255, 0.95); }
+.nitro[data-state="charging"] i { background: rgba(79, 227, 255, 0.45); box-shadow: none; }
+.nitro[data-state="charging"] span { color: var(--slate); }
+.nitro[data-state="ready"] span { font-weight: 700; }
+body[data-nitro="charging"] .t-nitro { opacity: 0.4; }
+body[data-nitro="boost"] .t-nitro { background: rgba(79, 227, 255, 0.35); }
 .countdown {
   position: absolute; inset: 0; display: grid; place-items: center;
   font-family: var(--num); font-weight: 800; font-size: clamp(7rem, 22vw, 14rem);
